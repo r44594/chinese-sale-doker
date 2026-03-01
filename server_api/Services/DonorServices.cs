@@ -51,7 +51,7 @@ namespace server_api.Services
             if (!string.IsNullOrEmpty(cachedDonors))
             {
                 _logger.LogInformation("Returning donors from Redis cache");
-                return JsonSerializer.Deserialize<List<GetDonor>>(cachedDonors);
+                return JsonSerializer.Deserialize<List<GetDonor>>(cachedDonors, _jsonOptions);
             }
             _logger.LogInformation("Fetching all donors from Database");
             var donors = await _repository.GetAllDonors();

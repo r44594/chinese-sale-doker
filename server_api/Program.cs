@@ -13,14 +13,21 @@ using StoreApi.Services;
 using System.Text;
 using Serilog;
 using StoreApi.Middleware;
+using Microsoft.Extensions.Caching.StackExchangeRedis; // חשוב לאדום של ה-Redis
+using System.Text.Json.Serialization; // חשוב לאדום של ה-IgnoreCycles
+using Microsoft.Extensions.DependencyInjection;
 
 try
 {
     Log.Information("Starting Store API application");
     var builder = WebApplication.CreateBuilder(args);
+
+    // הגדרת Serilog
     builder.Host.UseSerilog();
+
     builder.Services.AddControllers();
 
+    // הגדרת Swagger עם תמיכה ב-JWT
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
@@ -50,15 +57,19 @@ try
         });
     });
 
-    builder.Services.AddDbContext<SellContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    // חיבור ל-SQL Server
+    builder.Services.AddDbContext<SellContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-    var redisConnectionString = builder.Configuration["Redis__ConnectionString"] ?? "localhost:6379";
+    // הגדרת Redis Cache
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
     builder.Services.AddStackExchangeRedisCache(options =>
     {
         options.Configuration = redisConnectionString;
         options.InstanceName = "ChineseSale_";
     });
 
+    // רישום כל ה-Services וה-Repositories
     builder.Services.AddScoped<IGiftRepositories, GiftRepositories>();
     builder.Services.AddScoped<IGiftServices, GiftServices>();
     builder.Services.AddScoped<IUsereRepository, UsereRepository>();
@@ -73,6 +84,7 @@ try
     builder.Services.AddScoped<IRandomService, RandomService>();
     builder.Services.AddScoped<ITokenService, TokenService>();
 
+    // הגדרות JWT
     var jwtSettings = builder.Configuration.GetSection("JwtSettings");
     var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
 
@@ -98,15 +110,18 @@ try
 
     builder.Services.AddAuthorization();
 
+    // הגדרות JSON למניעת קשרים מעגליים
     builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
     builder.Services.AddCors();
+
     var app = builder.Build();
 
+    // Middleware
     app.UseRequestLogging();
     app.UseRateLimiting();
 
@@ -117,6 +132,7 @@ try
     }
 
     app.UseHttpsRedirection();
+
     app.UseCors(policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()
     );
@@ -126,11 +142,13 @@ try
 
     app.MapControllers();
 
+    // הרצת Migration אוטומטי בעליית האפליקציה
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<SellContext>();
         db.Database.Migrate();
     }
+
     app.Run();
 }
 catch (Exception ex)
@@ -141,4 +159,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
 public partial class Program { }
