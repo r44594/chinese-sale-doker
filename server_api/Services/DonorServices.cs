@@ -4,6 +4,8 @@ using server_api.Models;
 using System.Numerics;
 using System.Linq;
 using Chinese_sale_Api.Services;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 
 namespace server_api.Services
 {
@@ -12,10 +14,18 @@ namespace server_api.Services
     {
         private readonly IDonorRepositories _repository;
         private readonly ILogger<DonorServices> _logger;
-        public DonorServices(IDonorRepositories repositories, ILogger<DonorServices> logger)
+        private readonly IDistributedCache _cache; // הוספה: שדה ל-Redis
+        private const string DonorsCacheKey = "all_donors_list"; // הוספה: מפתח למטמון
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
+        public DonorServices(IDonorRepositories repositories, ILogger<DonorServices> logger, IDistributedCache cache)
         {
             _repository = repositories;
             _logger = logger;
+            _cache = cache;
         }
      
         public async Task AddDonor(DonorDto.CreatUpdateDonor dto)
@@ -30,16 +40,23 @@ namespace server_api.Services
                 Phone = dto.Phone
             };
             await _repository.AddDonor(donor);
+            await _cache.RemoveAsync(DonorsCacheKey);
         }
 
         //פונקציה שמחזירה לי אץ כל התורמים עם רשימת המתנות של כל תורם
 
         public async Task<List<GetDonor>> GetAllDonors()
         {
-            _logger.LogInformation("Fetching all donors");
+            var cachedDonors = await _cache.GetStringAsync(DonorsCacheKey);
+            if (!string.IsNullOrEmpty(cachedDonors))
+            {
+                _logger.LogInformation("Returning donors from Redis cache");
+                return JsonSerializer.Deserialize<List<GetDonor>>(cachedDonors);
+            }
+            _logger.LogInformation("Fetching all donors from Database");
             var donors = await _repository.GetAllDonors();
 
-            return donors.Select(d => new GetDonor
+            var result = donors.Select(d => new GetDonor
             {
                 Id = d.Id,
                 FirstName = d.FirstName,
@@ -54,6 +71,12 @@ namespace server_api.Services
                     CountOfSale = g.OrderItems != null ? g.OrderItems.Count : 0
                 }).ToList()
             }).ToList();
+
+            // הוספה: שמירה ב-Redis ל-30 דקות
+            var cacheOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+            await _cache.SetStringAsync(DonorsCacheKey, JsonSerializer.Serialize(result), cacheOptions);
+
+            return result;
         }
 
         public async Task<GetDonor> GetByDonorName(string donorName)
@@ -129,6 +152,7 @@ namespace server_api.Services
                 throw new Exception("לא ניתן לבטל תרומה/למחוק תורם - כבר נרכשו כרטיסים למתנות שלו!");
             }
             await _repository.DeleteDonor(donor);
+            await _cache.RemoveAsync(DonorsCacheKey);
         }
 
 
@@ -148,6 +172,7 @@ namespace server_api.Services
             donor.Phone = dto.Phone;
 
             await _repository.UpdateDonor(donor);
+            await _cache.RemoveAsync(DonorsCacheKey);
             return donor;
         }
         public async Task<List<GetDonor>> GetByDonorEmail(string email)

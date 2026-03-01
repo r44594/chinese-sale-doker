@@ -2,6 +2,8 @@
 using server_api.Dtos;
 using server_api.Interfaces;
 using server_api.Models;
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
 using server_api.Repositories;
 using System.Drawing;
 using static server_api.Dtos.GiftDto;
@@ -10,18 +12,37 @@ namespace server_api.Services
 {
     public class GiftServices : IGiftServices
     {
+        private readonly IDistributedCache _cache;
+        private const string GiftsCacheKey = "all_gifts_list";
         private readonly IGiftRepositories _repository;
         private readonly ILogger<GiftServices> _logger;
-        public GiftServices(IGiftRepositories repositories, ILogger<GiftServices> logger)
+        // הגדרות סריאליזציה גלובליות למניעת בעיות ב-Redis
+        private JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
+        public GiftServices(IGiftRepositories repositories, ILogger<GiftServices> logger, IDistributedCache cache)
         {
             _repository = repositories;
             _logger = logger;
+            _cache = cache;
         }
         public async Task<List<GiftDto.Get>> GetAllGifts()
         {
-            _logger.LogInformation("Fetching all gifts");
+            // 1. ניסיון שליפה מ-Redis
+            var cachedGifts = await _cache.GetStringAsync(GiftsCacheKey);
+            if (!string.IsNullOrEmpty(cachedGifts))
+            {
+                _logger.LogInformation("Returning gifts from Redis cache");
+                return JsonSerializer.Deserialize<List<GiftDto.Get>>(cachedGifts, _jsonOptions);
+            }
+
+            _logger.LogInformation("Fetching all gifts from Database");
             var gifts = await _repository.GetAllGifts();
-            return gifts.Select(g => new GiftDto.Get
+
+            // כאן התיקון: הגדרת המשתנה result והסרת ה-return המיותר שהיה בשורה 36
+            var result = gifts.Select(g => new GiftDto.Get
             {
                 Id = g.Id,
                 GiftName = g.GiftName,
@@ -29,7 +50,6 @@ namespace server_api.Services
                 TicketPrice = g.TicketPrice,
                 ImageUrl = g.ImageUrl,
                 CategoryId = g.CategoryId,
-                //לשים לב בכל מקום שכתוב לי קאגורי לכתוב גם קטגורי-ניים
                 CategoryName = g.Category != null ? g.Category.Name : null,
                 DonorName = g.Donor?.FirstName + " " + g.Donor?.LastName,
                 DonorId = g.DonorId,
@@ -37,6 +57,12 @@ namespace server_api.Services
                 WinnerName = g.IsDrawn && g.WinnerUser != null
                 ? g.WinnerUser.FirstName + " " + g.WinnerUser.LastName : null
             }).ToList();
+
+            // 2. שמירה ב-Redis ל-30 דקות
+            await _cache.SetStringAsync(GiftsCacheKey, JsonSerializer.Serialize(result),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) });
+
+            return result;
         }
 
         public async Task<List<GiftDto.AfterRandom>> GetAllGiftsAfterRandom()
@@ -106,7 +132,8 @@ namespace server_api.Services
             };
 
             await _repository.AddGift(gift);
-
+            // הוספה: ניקוי ה-Cache כדי שהרשימה תתעדכן בשינוי
+            await _cache.RemoveAsync(GiftsCacheKey);
             _logger.LogInformation("Gift created with ID: {GiftId}", gift.Id);
 
 
@@ -134,6 +161,7 @@ namespace server_api.Services
                 throw new Exception("לא ניתן למחוק מתנה זו מכיוון שהיא משוייכת להזמנות קיימות.");
             }
             await _repository.DeleteGift(gift);
+            await _cache.RemoveAsync(GiftsCacheKey);
         }
         public async Task<Gift> UpdateGift(int id, GiftDto.CreatUpdate dto)
         {
@@ -151,6 +179,8 @@ namespace server_api.Services
             gift.CategoryId = dto.CategoryId;
             gift.DonorId = dto.DonorId;
             await _repository.UpdateGift(gift);
+            await _cache.RemoveAsync(GiftsCacheKey);
+
             return gift;
         }
 

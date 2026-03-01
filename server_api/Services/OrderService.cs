@@ -1,6 +1,8 @@
 ﻿using Chinese_sale_Api.Dtos;
 using Chinese_sale_Api.Interfaces;
+using Microsoft.Extensions.Caching.Distributed;
 using server_api.Dtos;
+using System.Text.Json;
 
 namespace Chinese_sale_Api.Services
 {
@@ -8,11 +10,17 @@ namespace Chinese_sale_Api.Services
     {
         private readonly IOrderRepository repository;
         private readonly ILogger<OrderService> _logger;
-
-        public OrderService(IOrderRepository repository, ILogger<OrderService> logger)
+        private readonly IDistributedCache _cache;
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
+        public OrderService(IOrderRepository repository, ILogger<OrderService> logger, IDistributedCache cache)
         {
             this.repository = repository;
             _logger = logger;
+            _cache = cache;
         }
         public async Task<int> GetNumberOfTickets(int giftId)
         {
@@ -41,6 +49,15 @@ namespace Chinese_sale_Api.Services
      
         public async Task<List<GiftDto.MostPurchasedGiftDto>> GetMostPurchasedGift()
         {
+            string cacheKey = "most_purchased_gifts";
+
+            // בדיקה ב-Redis
+            var cachedData = await _cache.GetStringAsync(cacheKey);
+            if (!string.IsNullOrEmpty(cachedData))
+            {
+                return JsonSerializer.Deserialize<List<GiftDto.MostPurchasedGiftDto>>(cachedData, _jsonOptions);
+            }
+
             _logger.LogInformation("Fetching all gifts with purchase statistics");
             var items = await repository.GetAllOrderItems();
 
@@ -55,7 +72,10 @@ namespace Chinese_sale_Api.Services
                     IsDrawn = g.Key.IsDrawn
                 })
                 .OrderByDescending(x => x.TotalQuantity)
-                .ToList(); 
+                .ToList();
+            // שמירה ב-Cache ל-5 דקות (זה נתון שמשתנה מהר)
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result, _jsonOptions),
+                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) });
 
             return result;
         }

@@ -5,7 +5,8 @@ using server_api.Models;
 
 using StoreApi.Services;
 using static server_api.Models.User;
-
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 namespace server_api.Services
 {
     public class UserServices : IUserServices
@@ -14,13 +15,22 @@ namespace server_api.Services
         private readonly ITokenService _tokenService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<UserServices> _logger;
+        private readonly IDistributedCache _cache;
+
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
         public UserServices(ITokenService tokenService, IUsereRepository repositories
-            , IConfiguration configuration, ILogger<UserServices> logger)
+            , IConfiguration configuration, ILogger<UserServices> logger, IDistributedCache cache)
         {
             _repository = repositories;
             _tokenService = tokenService;
             _configuration = configuration;
             _logger = logger;
+            _cache = cache;
+            
         }
 
         public async Task<GetUsers> register(UserDto.RegisterDto dto)
@@ -45,6 +55,7 @@ namespace server_api.Services
             };
 
             var createdUser = await _repository.register(user);
+            await _cache.RemoveAsync("all_users_list");
             _logger.LogInformation("User created with ID: {UserId}", createdUser.Id);
             return MapToResponseDto(createdUser);
 

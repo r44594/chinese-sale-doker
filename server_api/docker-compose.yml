@@ -15,6 +15,12 @@ services:
       retries: 10
       start_period: 40s
 
+  redis:
+    image: redis:7-alpine
+    container_name: chinese-sale-redis
+    ports:
+      - "6379:6379"
+
   api:
     build:
       context: .
@@ -25,6 +31,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ChineseSaleDB;User Id=sa;Password=MyChineseSale2026!;TrustServerCertificate=True;
+      - Redis__ConnectionString=redis:6379
     depends_on:
       sqlserver:
         condition: service_healthy
+      redis:
+        condition: service_started

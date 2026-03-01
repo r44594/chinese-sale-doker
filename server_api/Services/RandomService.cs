@@ -1,8 +1,10 @@
 ﻿using Chinese_sale_Api.Services;
+using Microsoft.Extensions.Caching.Distributed;
 using server_api.Dtos;
 using server_api.Interfaces;
 using server_api.Models;
 using System;
+using System.Text.Json;
 
 namespace server_api.Services
 {
@@ -11,11 +13,17 @@ namespace server_api.Services
         private readonly IRandomRepository repository;
         private readonly Random _random = new Random();
         private readonly ILogger<RandomService> _logger;
-
-        public RandomService(IRandomRepository repository, ILogger<RandomService> logger)
+        private readonly IDistributedCache _cache;
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+        };
+        public RandomService(IRandomRepository repository, ILogger<RandomService> logger , IDistributedCache cache)
         {
             this.repository = repository;
             _logger = logger;
+            _cache = cache;
         }
 
         public async Task<List<RandomDto>> DrawLottery()
@@ -97,8 +105,11 @@ namespace server_api.Services
                 {
                     throw new Exception("תהליך ההגרלה הסתיים ללא זוכים חדשים.");
                 }
-               
-                //await repository.SaveAsync();
+
+              await repository.SaveAsync();
+                // // כאן הוספתי: ברגע שבוצעה הגרלה חדשה, אנחנו מוחקים את הדוח הישן מה-Cache
+                // // כדי שהמשתמשים יראו את הזוכים החדשים בפעם הבאה שיבקשו דוח
+                await _cache.RemoveAsync("winners_report");
                 _logger.LogInformation("הגרלת הפרסים הסתיימה בהצלחה ונשמרה במסד הנתונים");
                 //לבנתיים רק כדי לבדוק שההגרלה עובדת לי!
                 //_logger.LogInformation("בדיקה: השמירה בוטלה כדי לא לחסום את המכירה");
@@ -113,7 +124,15 @@ namespace server_api.Services
         }
         public async Task<List<RandomDto>> GetWinnersReportAsync()
         {
+    
             _logger.LogInformation("Generating winners report");
+            string cacheKey = "winners_report";
+            var cachedReport = await _cache.GetStringAsync(cacheKey);
+            if (!string.IsNullOrEmpty(cachedReport))
+            {
+                _logger.LogInformation("Returning winners report from Redis cache");
+                return JsonSerializer.Deserialize<List<RandomDto>>(cachedReport, _jsonOptions);
+            }
             var gifts = await repository.GetGiftsWithWinnersAsync();
 
             var result = new List<RandomDto>();
@@ -131,7 +150,10 @@ namespace server_api.Services
 
                 result.Add(dto);
             }
-
+            // // שומרים את התוצאה ב-Redis ל-24 שעות (כי זוכים לא משתנים כל רגע)
+            var cacheOptions = new DistributedCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromHours(24));
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result, _jsonOptions), cacheOptions);
             return result;
         }
 

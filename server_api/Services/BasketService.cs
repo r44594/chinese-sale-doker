@@ -1,18 +1,30 @@
 ﻿using Chinese_sale_Api.Interfaces;
 using server_api.Dtos;
 using server_api.Models;
+using System.Text.Json; 
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json.Serialization;
 namespace Chinese_sale_Api.Services
 
 {
     public class BasketService : IBasketService
     {
         private readonly IBasketRepository Repository;
-        private readonly ILogger<OrderService> _logger;
-        public BasketService(IBasketRepository Repository, ILogger<OrderService> logger)
+        private readonly ILogger<BasketService> _logger;
+        private readonly IDistributedCache _cache;
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = ReferenceHandler.IgnoreCycles,
+            WriteIndented = false // חוסך מקום ב-Redis
+        };
+        public BasketService(IBasketRepository Repository, ILogger<BasketService> logger, IDistributedCache cache)
         {
             this.Repository = Repository;
             _logger = logger;
+            _cache = cache;
         }
+        private string GetBasketCacheKey(int userId) => $"basket_{userId}";
         // הוספה לסל + בדיקה אם כבר יש זוכה
         public async Task AddToBasket(BasketDto basketDto)
         {
@@ -40,16 +52,13 @@ namespace Chinese_sale_Api.Services
 
             }
 
-
-
-
             // אם הפריט כבר בסל, מגדילים את הכמות
             var basketItem = basket.BasketItem.FirstOrDefault(bi => bi.GiftId == basketDto.giftId);
             if (basketItem != null)
             {
                 basketItem.Quantity += basketDto.quantity;
                 await Repository.UpdateBasketItemAsync(basketItem);
-                _logger.LogInformation("Increased quantity of gift {GiftId} in basket", basketDto.giftId); // Logging
+                _logger.LogInformation("Increased quantity of gift {GiftId} in basket", basketDto.giftId); 
             }
             else
             {
@@ -60,11 +69,11 @@ namespace Chinese_sale_Api.Services
                     Quantity = basketDto.quantity
                 };
                 await Repository.AddBasketItemAsync(basketItem);
-                _logger.LogInformation("Added gift {GiftId} to basket", basketDto.giftId); // Logging
+                _logger.LogInformation("Added gift {GiftId} to basket", basketDto.giftId); 
             }
+            await _cache.RemoveAsync(GetBasketCacheKey(basketDto.UserId));
         }
 
-        // פונקציה אחת לרכישה – Checkout
         public async Task<int> Checkout(CheckoutDto checkoutDto)
         {
             _logger.LogInformation("Checkout initiated for user {UserId}", checkoutDto.UserId);
@@ -116,20 +125,40 @@ namespace Chinese_sale_Api.Services
                                                                                        
             await Repository.ClearBasketAsync(basket.BasketItem);
             _logger.LogInformation("Basket cleared for user {UserId}", checkoutDto.UserId);
-
+            // הוספה: ניקוי ה-Cache של הסל כי הוא התרוקן
+            await _cache.RemoveAsync(GetBasketCacheKey(checkoutDto.UserId));
+            // הוספה: ניקוי ה-Cache הכללי של התורמים (כי CountOfSale השתנה) ושל המתנות (אם יש)
+            await _cache.RemoveAsync("all_donors_list");
+            await _cache.RemoveAsync("all_gifts_list");
+            _logger.LogInformation("Basket cleared and cache invalidated for user {UserId}", checkoutDto.UserId);
             return order.Id;
         }
-        //תכתוב לי פוןנקציה זו-  public async Task<Basket?> GetBasketByUserIdAsync(int userId)
         public async Task<Basket?> GetBasketByUserIdAsync(int userId)
         {
-            _logger.LogInformation("Fetching basket for user {UserId}", userId); 
-            var basket = await Repository.GetBasketByUserIdAsync(userId);
-            if (basket == null)
+            // הוספה: ניסיון שליפה מה-Cache
+            string cacheKey = GetBasketCacheKey(userId);
+            var cachedBasket = await _cache.GetStringAsync(cacheKey);
+            if (!string.IsNullOrEmpty(cachedBasket))
             {
-                _logger.LogWarning("No basket found for user {UserId}", userId); 
+                _logger.LogInformation("Returning basket for user {UserId} from cache", userId);
+                return JsonSerializer.Deserialize<Basket>(cachedBasket, _jsonOptions);
+            }
+
+            _logger.LogInformation("Fetching basket for user {UserId} from Database", userId);
+            var basket = await Repository.GetBasketByUserIdAsync(userId);
+
+            if (basket != null)
+            {
+                var serialized = JsonSerializer.Serialize(basket, _jsonOptions);
+                // הוספה: שמירה ב-Cache ל-10 דקות (סל נוטה להשתנות מהר יותר)
+                await _cache.SetStringAsync(cacheKey, serialized,
+                        new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) });
+            }
+            else
+            {
+                _logger.LogWarning("No basket found for user {UserId}", userId);
             }
             return basket;
-
         }
 
         public async Task RemoveBasketItemAsync(int basketItemId)
@@ -144,10 +173,10 @@ namespace Chinese_sale_Api.Services
                 _logger.LogWarning("Service: Basket item {Id} not found", basketItemId);
                 throw new ArgumentException("הפריט לא נמצא בסל, ייתכן שכבר נמחק.");
             }
-
+            int userId = exists.Basket.UserId;
             // שליחת ה-ID ל-Repository (כי זה מה שהוא מצפה לקבל)
             await Repository.DeleteBasketItemAsync(basketItemId);
-
+            await _cache.RemoveAsync(GetBasketCacheKey(userId));
             _logger.LogInformation("Service: Item {Id} deleted successfully", basketItemId);
         }
 
