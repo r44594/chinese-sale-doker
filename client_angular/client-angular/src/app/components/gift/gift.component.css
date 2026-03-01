@@ -1,0 +1,118 @@
+
+.main-container {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #000;
+    border-radius: 4px;
+}
+
+.gift-card {
+    background: #fff;
+    border: 1px solid #e0e0e0 !important;
+    transition: all 0.3s ease-in-out;
+}
+
+.gift-card:hover {
+    transform: translateY(-5px);
+    border-color: #000 !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+}
+
+
+.winner-card-gold-modern {
+    background-color: #ffffff;
+    border: 1px solid #d4af37; 
+    padding: 0.5rem;
+    text-align: center;
+    border-radius: 8px;
+    margin-top: 5px;
+}
+
+.winner-label {
+    font-size: 0.65rem; 
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #888; 
+    margin-bottom: 0.2rem;
+}
+
+.winner-name {
+    font-size: 1.1rem; 
+    font-weight: 600;
+    color: #000; 
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.gold-accent-line {
+    display: none;
+}
+
+.animate-fadein {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+::ng-deep .black-toast.p-toast-message {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 4px !important;
+}
+
+::ng-deep .black-toast .p-toast-message-content {
+    background: #000000 !important;
+    border-right: 5px solid #ffffff;
+}
+
+::ng-deep .black-toast .p-toast-summary,
+::ng-deep .black-toast .p-toast-detail,
+::ng-deep .black-toast .p-icon-wrapper,
+::ng-deep .black-toast .p-toast-icon-close {
+    color: #ffffff !important;
+}
+
+
+::ng-deep .p-button {
+    border-radius: 4px !important;
+}
+
+::ng-deep .p-button.p-button-dark, 
+::ng-deep .bg-900 {
+    background: #000 !important;
+    border-color: #000 !important;
+}
+
+::ng-deep .text-900 {
+    color: #000 !important;
+}
+
+::ng-deep .border-900 {
+    border-color: #000 !important;
+}
+
+::ng-deep .p-inputtext:focus, 
+::ng-deep .p-dropdown:not(.p-disabled).p-focus {
+    border-color: #000 !important;
+    box-shadow: 0 0 0 1px #000 !important;
+}
+
+
+::ng-deep .p-dialog .p-dialog-header {
+    border-bottom: 1px solid #000 !important;
+    font-weight: 800;
+}

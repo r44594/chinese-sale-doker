@@ -1,0 +1,316 @@
+
+<div class="main-container bg-white min-h-screen text-900 custom-scrollbar" dir="rtl" style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <div class="surface-0 border-bottom-1 border-200 p-4 sticky top-0 z-5 shadow-sm">
+        <div class="flex flex-column md:flex-row md:align-items-center justify-content-between gap-3 max-w-screen-xl mx-auto">
+            <div class="flex align-items-center gap-3">
+                <i class="pi pi-gift text-900 text-3xl"></i>
+                <h1 class="text-2xl font-bold m-0 text-900 uppercase tracking-tight">ניהול המכירה</h1>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button *ngIf="userRole === Role.Admin" pButton pRipple label="דוח רוכשים" icon="pi pi-users" 
+                        class="p-button-outlined border-round-xl text-900 border-900 shadow-1 hover:bg-gray-100" 
+                        (click)="router.navigate(['/order', 0])"></button>
+
+                <button *ngIf="userRole === Role.Admin" pButton pRipple label="הוספת מתנה" icon="pi pi-plus" 
+                        class="p-button-dark border-round-xl bg-900 border-900 shadow-2" 
+                        (click)="openAddGift()"></button>
+                
+                <button *ngIf="userRole === Role.User" pButton pRipple label="לסל הקניות" icon="pi pi-shopping-cart" 
+                        class="p-button-outlined border-round-xl text-900 border-900" 
+                        (click)="goToCart()"></button>
+            </div>
+        </div>
+
+        <div class="grid mt-4 max-w-screen-xl mx-auto p-fluid align-items-end bg-gray-50 p-3 border-round-xl shadow-inner border-1 border-100">
+            <div class="col-12 md:col-3">
+                <span class="p-input-icon-left w-full">
+                    <i class="pi pi-search text-900"></i>
+                    <input type="text" pInputText [(ngModel)]="filter.name" (input)="onFilterChange()" 
+                           placeholder="חפש שם פריט..." class="border-round-lg shadow-sm w-full border-900" />
+                </span>
+            </div>
+            <div class="col-12 md:col-2">
+                <p-dropdown [options]="(categories$ | async) || []" 
+                            [(ngModel)]="filter.categoryName" 
+                            (onChange)="onFilterChange()"
+                            optionLabel="name" 
+                            optionValue="name" 
+                            [showClear]="true"
+                            placeholder="כל הקטגוריות"
+                            styleClass="border-round-lg shadow-sm border-900">
+                </p-dropdown>
+            </div>
+
+            <div class="col-12 md:col-2" *ngIf="userRole === Role.Admin">
+                <p-dropdown [options]="(donors$ | async) || []" 
+                            [(ngModel)]="filter.donorName" 
+                            (onChange)="onFilterChange()"
+                            optionLabel="firstName" 
+                            optionValue="firstName" 
+                            [showClear]="true"
+                            placeholder="כל התורמים"
+                            styleClass="border-round-lg shadow-sm border-900">
+                </p-dropdown>
+            </div>
+
+            <div class="col-12 md:col-2" *ngIf="userRole === Role.Admin">
+                <p-inputNumber [(ngModel)]="filter.minPurchasers" (onInput)="onFilterChange()" 
+                               placeholder="מינימום רוכשים" [showButtons]="true" 
+                               buttonLayout="horizontal" spinnerMode="horizontal"
+                               decrementButtonClass="p-button-dark bg-900" incrementButtonClass="p-button-dark bg-900"
+                               incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus"
+                               class="border-round-lg shadow-sm"></p-inputNumber>
+            </div>
+
+            <div class="col-12 md:col-3 flex gap-2 align-items-center justify-content-end">
+                <button *ngIf="userRole === Role.User" pButton label="מיון מחיר" icon="pi pi-sort-numeric-down" 
+                        class="p-button-sm p-button-outlined text-900 border-900 border-round-lg w-auto px-3" 
+                        (click)="sortByPrice()"></button>
+                <button pButton icon="pi pi-filter-slash" 
+                        class="p-button-text text-900 p-button-sm border-round-circle" 
+                        (click)="clearFilter()"></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 md:p-6 max-w-screen-xl mx-auto">
+        <div class="grid">
+            @for (g of (gifts$ | async); track g.id) {
+                <div class="col-12 sm:col-6 lg:col-4 xl:col-3 p-3">
+                    <div class="gift-card bg-white border-1 border-200 shadow-2 hover:shadow-6 transition-all duration-300 flex flex-column h-full relative" 
+                         style="border-radius: 24px; overflow: hidden;">
+                        
+                        <div class="absolute top-0 w-full p-3 flex justify-content-between z-3">
+                            <div class="flex gap-2" *ngIf="userRole === Role.Admin">
+                                <button pButton icon="pi pi-pencil" class="p-button-rounded bg-900 border-900 p-button-sm shadow-2" (click)="editGift(g)"></button>
+                                <button pButton icon="pi pi-trash" class="p-button-rounded bg-white text-900 border-900 p-button-sm shadow-2" (click)="deleteGift(g.id)"></button>
+                            </div>
+                            <span *ngIf="g.isDrawn" class="bg-900 text-white text-xs px-3 py-1 font-bold shadow-2 border-round-xl uppercase">הוגרל</span>
+                        </div>
+
+                        <div class="relative bg-white overflow-hidden">
+                            <img [src]="'assets/images/' + (g.imageUrl || 'default.jpg')" 
+                                 (error)="handleImageError($event)"
+                                 class="w-full h-15rem block object-cover grayscale hover:grayscale-0 transition-all duration-500" />
+                            <div class="absolute bottom-0 right-0 bg-900 text-white px-4 py-2 font-bold shadow-2" 
+                                 style="border-top-right-radius: 15px;">
+                                {{ g.ticketPrice | currency:'ILS' }}
+                            </div>
+                        </div>
+
+                        <div class="p-4 flex flex-column flex-grow-1 text-center">
+                            <span class="text-xs font-bold text-500 mb-1 uppercase tracking-widest">{{ $any(g).categoryName }}</span>
+                            <h2 class="text-xl font-bold text-900 mb-3 mt-0">{{ g.giftName }}</h2>
+                            
+                            <div *ngIf="userRole === Role.Admin" class="text-xs font-bold text-900 mb-2">
+                               נתרם ע"י: {{ g.donorName }}
+                            </div>
+
+                            <p class="text-600 text-sm flex-grow-1 mb-4 leading-relaxed">{{ g.description }}</p>
+
+                  <div class="mt-auto">
+  @if (g.isDrawn && userRole === Role.User) {
+    <div class="winner-card-gold-modern animate-fadein">
+        <div class="winner-label">הזוכה המאושר/ת</div>
+        <div class="winner-name">
+            {{ g.winnerName ? g.winnerName : 'ממתין לעדכון...' }}
+        </div>
+        <div class="gold-accent-line"></div>
+    </div>
+}
+    @else {
+        <div *ngIf="userRole === Role.User">
+            <div class="flex align-items-center justify-content-between bg-gray-50 border-1 border-200 border-round-xl p-2 mb-3">
+                <button pButton icon="pi pi-minus" class="p-button-text p-button-sm text-900" (click)="decrement(g)"></button>
+                <span class="font-bold text-lg text-900">{{ g.count || 0 }}</span>
+                <button pButton icon="pi pi-plus" class="p-button-text p-button-sm text-900" (click)="increment(g)"></button>
+            </div>
+            <button pButton label="הוספה לסל" icon="pi pi-shopping-bag" 
+                    class="w-full bg-900 border-900 border-round-xl py-3 font-bold shadow-3" 
+                    [disabled]="!g.count" (click)="addToCart(g)"></button>
+                  </div>
+                  }
+             </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<p-dialog [(visible)]="showAddGift" 
+          [header]="isEditMode ? 'עדכון מוצר' : 'הוספת מוצר חדש'" 
+          [modal]="true" 
+          [draggable]="false"
+          [style]="{width: '480px', borderRadius: '25px', border: '2px solid #000'}" 
+          class="p-fluid modern-gift-dialog" 
+          dir="rtl">
+    
+    <div class="grid mt-2 custom-scrollbar" style="max-height: 70vh; overflow-y: auto; padding: 5px;">
+      <div class="col-12 mb-3 text-right">
+            <label class="text-sm font-bold text-900 mb-2 block">שם הפריט</label>
+            <input pInputText [(ngModel)]="newGift.giftName" #giftName="ngModel" required maxlength="50"
+                   class="border-round-xl p-inputtext-lg shadow-sm border-900" 
+                   [ngClass]="{'ng-invalid ng-dirty': giftName.invalid && giftName.touched}" />
+            <small class="p-error block mt-1" *ngIf="giftName.invalid && giftName.touched">חובה להזין שם (עד 50 תווים)</small>
+        </div>
+
+        <div class="col-12 mb-3 text-right">
+            <label class="text-sm font-bold text-900 mb-2 block">תיאור קצר</label>
+            <textarea pTextarea [(ngModel)]="newGift.description" rows="3" 
+                      class="border-round-xl shadow-sm border-900"></textarea>
+        </div>
+
+        <div class="col-6 mb-3 text-right">
+            <label class="text-sm font-bold text-900 mb-2 block">מחיר כרטיס</label>
+            <p-inputNumber [(ngModel)]="newGift.ticketPrice" #price="ngModel" required [min]="1" [max]="1000"
+                           mode="currency" currency="ILS" locale="he-IL" 
+                           class="shadow-sm" styleClass="border-round-xl border-900"
+                           [ngClass]="{'ng-invalid ng-dirty': (newGift.ticketPrice < 1 || newGift.ticketPrice > 1000) && price.touched}">
+            </p-inputNumber>
+            <small class="p-error block mt-1" *ngIf="(newGift.ticketPrice < 1 || newGift.ticketPrice > 1000) && price.touched">
+                המחיר חייב להיות בין 1 ל-1000 ₪
+            </small>
+        </div>
+
+        <div class="col-6 mb-3 text-right">
+            <label class="text-sm font-bold text-900 mb-2 block">תמונה<span class="text-red-500">*</span></label>
+            <p-dropdown [options]="[
+                {label: 'ברירת מחדל', value: 'default.jpg'},
+                {label: 'מיטה', value: 'bed1.jpg'},
+                {label: 'כיסא', value: 'chair.jpg'},
+                {label: 'שולחן', value: 'table.jpg'},
+                {label: 'ילדים', value: 'kids.jpg'},
+                {label: 'עיצוב חדר ילדים', value: 'עיצוב חדר.jpg'},
+                {label: 'מערכת ישיבה', value: 'מערכת ישיבה.jpg'},
+                {label:'מלון גלי צאנז', value:  'מלון גלי צאננז.jpg'},
+                {label:  'חופשה זוגית', value: 'free.jpg'},
+             
+            ]" [(ngModel)]="newGift.imageUrl" #imageUrl="ngModel"
+            required
+            [ngClass]="{'ng-invalid ng-dirty': imageUrl.invalid && imageUrl.touched}"
+            styleClass="border-round-xl shadow-sm border-900">
+        </p-dropdown>
+        <small class="p-error block mt-1" *ngIf="imageUrl.invalid && imageUrl.touched">חובה לבחור תמונה למתנה</small>
+        </div>
+
+    <div class="col-12 mb-3 text-right">
+            <label class="text-sm font-bold text-900 mb-2 block">בחר קטגוריה</label>
+            <p-dropdown [options]="(categories$ | async) || []" 
+                        [(ngModel)]="newGift.categoryId" 
+                        optionLabel="name" 
+                        optionValue="id" 
+                        [showClear]="true"
+                        [filter]="true" 
+                        appendTo="body" 
+                        placeholder="לחץ לבחירת קטגוריה"
+                        styleClass="border-round-xl shadow-sm border-900 w-full">
+            </p-dropdown>
+        </div>
+    <div class="col-12 mb-4 text-right">
+            <label class="text-sm font-bold text-900 mb-2 block">בחר תורם</label>
+            <p-dropdown [options]="(donors$ | async) || []" 
+                        [(ngModel)]="newGift.donorId" 
+                        optionLabel="firstName" 
+                        optionValue="id" 
+                        [filter]="true"
+                        appendTo="body"
+                        placeholder="בחר תורם"
+                        styleClass="border-round-xl shadow-sm border-900 w-full">
+                <ng-template let-donor pTemplate="item">
+                    <div class="p-2">{{donor.firstName}} {{donor.lastName}}</div>
+                </ng-template>
+            </p-dropdown>
+</div>
+    </div>
+
+    <ng-template pTemplate="footer">
+        <div class="flex justify-content-center gap-3 pt-3 border-top-1 border-900">
+            <button pButton label="ביטול" icon="pi pi-times" 
+                    class="p-button-text text-900 font-bold" (click)="showAddGift = false"></button>
+            <button pButton [label]="isEditMode ? 'עדכן מוצר' : 'שמור מתנה'" icon="pi pi-check" 
+                    class="bg-900 border-900 px-5 py-3 border-round-xl shadow-3 font-bold" 
+                    (click)="saveGift()"></button>
+        </div>
+    </ng-template>
+</p-dialog>
+
+<style>
+  
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+        display: block !important;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #ffffff;
+        border: 1px solid #000;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #000000;
+        border-radius: 10px;
+    }
+
+
+    :host ::ng-deep .modern-gift-dialog .p-dialog-header {
+        background-color: #ffffff;
+        border-bottom: 2px solid #000000;
+        padding: 1.5rem;
+        border-top-left-radius: 25px;
+        border-top-right-radius: 25px;
+    }
+    :host ::ng-deep .p-inputtext:focus, 
+    :host ::ng-deep .p-dropdown:not(.p-disabled).p-focus {
+        border-color: #000 !important;
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.1) !important;
+    }
+    
+    .gift-card {
+        transition: all 0.3s ease;
+    }
+    .gift-card:hover {
+        transform: translateY(-8px);
+        border-color: #000;
+    }
+    :host ::ng-deep .p-dropdown-panel {
+    border: 2px solid #000 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+}
+
+:host ::ng-deep .p-dropdown-items-wrapper {
+    max-height: 250px !important;}
+
+:host ::ng-deep .custom-dropdown-panel {
+    min-width: 300px !important;
+    background: #ffffff !important;
+    border: 2px solid #000 !important;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3) !important;
+    z-index: 9999 !important;
+}
+
+:host ::ng-deep .p-dropdown-items-wrapper {
+    max-height: 300px !important; 
+}
+
+
+:host ::ng-deep .modern-gift-dialog {
+    width: 600px !important;
+}
+:host ::ng-deep .p-dialog-content {
+    overflow: visible !important;
+}
+
+
+:host ::ng-deep .p-dropdown-panel {
+    z-index: 10000 !important; 
+    background: white !important;
+    border: 2px solid #000 !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+}
+
+
+</style>

@@ -1,0 +1,59 @@
+
+
+.user-icon-circle {
+    width: 4.5rem; 
+    height: 4.55rem;
+    background-color: #000000 !important;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem auto; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.user-icon-circle i {
+    color: #ffffff !important;
+    font-size: 1.5rem; 
+}
+
+:host ::ng-deep .p-button-black {
+    background: #000000 !important;
+    border-color: #000000 !important;
+    color: #ffffff !important;
+    transition: transform 0.2s;
+}
+
+:host ::ng-deep .p-button-black:hover {
+    transform: translateY(-2px);
+    background: #1a1a1a !important;
+}
+
+.donor-card {
+    background: #ffffff;
+    border: 1px solid #eef0f2;
+    border-radius: 20px;
+    padding: 2rem !important; 
+    min-height: 320px; 
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.donor-card:hover {
+    transform: translateY(-8px);
+}
+
+.gift-badge {
+    background-color: #000000;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 4px 10px; 
+    border-radius: 6px;
+    font-size: 0.7rem; 
+    letter-spacing: 0.3px;
+}
+
+:host ::ng-deep .custom-black-dialog .p-dialog-header {
+    border-top-right-radius: 16px;
+    border-top-left-radius: 16px;
+}

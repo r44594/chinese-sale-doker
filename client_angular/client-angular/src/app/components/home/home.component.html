@@ -1,0 +1,30 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="navbar-logo" routerLink="/gifts">
+      <strong>מכירה סינית</strong>
+    </div>
+    <ul class="navbar-links">
+      <li>
+        
+        <a routerLink="/gifts" routerLinkActive="active">קטלוג מתנות</a>
+      </li>
+      <li *ngIf="authService.isLoggedIn() && authService.getUserRole() !== 'Admin'">
+        <a routerLink="/basket" routerLinkActive="active">סל</a>
+      </li>
+<ng-container *ngIf="authService.getUserRole() === 'Admin'">
+      <li>
+        <a routerLink="/donors" routerLinkActive="active">ניהול תורמים</a>
+      </li>
+      </ng-container>
+      <li *ngIf="authService.getUserRole() === 'Admin'">
+        <a routerLink="/order" routerLinkActive="active">ניהול מערכת</a>
+      </li>
+      <li *ngIf="!authService.isLoggedIn()">
+        <button class="btn-login" routerLink="/login">התחברות</button>
+      </li>
+      <li *ngIf="authService.isLoggedIn()" class="user-info">
+        <button class="btn-logout" (click)="onLogout()">התנתקות</button>
+      </li>
+    </ul>
+  </div>
+</nav>

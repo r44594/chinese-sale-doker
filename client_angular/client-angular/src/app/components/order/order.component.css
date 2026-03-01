@@ -1,0 +1,158 @@
+.admin-panel {
+    padding: 2rem;
+    background: #ffffff; /* רקע לבן נקי */
+    min-height: 100vh;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  
+    /* כותרת */
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #111; /* קו שחור עבה ונוכח */
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+
+      .title {
+        font-weight: 800;
+        color: #000;
+        margin: 0;
+      }
+    }
+  
+    /* כפתורי ניווט עליונים */
+    .nav-actions {
+      display: flex;
+      gap: 1rem;
+
+      ::ng-deep .p-button {
+        background: #fff;
+        color: #000;
+        border: 1px solid #000;
+        border-radius: 8px;
+        transition: all 0.2s;
+
+        &:hover {
+          background: #f0f0f0;
+          border-color: #000;
+        }
+
+        &.active {
+          background: #000 !important;
+          color: #fff !important;
+          border-color: #000 !important;
+        }
+
+        /* כפתור הגרלה ספציפי - שחור מלא */
+        &.p-button-dark {
+            background: #000;
+            color: #fff;
+            border: none;
+            &:hover { background: #333; }
+        }
+      }
+    }
+  
+    /* סרגל כלים (מיון) */
+    .toolbar {
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      color: #555;
+
+      ::ng-deep .p-button {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        border: 1px solid #ccc;
+        color: #000;
+        background: transparent;
+        font-size: 0.9rem;
+
+        &:hover { 
+            background: #000; 
+            color: #fff;
+            border-color: #000;
+        }
+      }
+    }
+  
+    /* עיצוב טבלאות PrimeNG */
+    ::ng-deep {
+        .p-datatable {
+            .p-datatable-thead > tr > th {
+                background: #f8f8f8;
+                color: #000;
+                border-bottom: 2px solid #000;
+                font-weight: 700;
+                text-align: right;
+            }
+
+            .p-datatable-tbody > tr {
+                background: #fff;
+                color: #000;
+                transition: background 0.2s;
+                
+                &:hover {
+                    background: #fdfdfd !important;
+                }
+
+                td {
+                    border-bottom: 1px solid #eee;
+                    padding: 1rem;
+                }
+            }
+        }
+
+        /* תגיות (סטטוס) בשחור לבן */
+        .p-tag {
+            border-radius: 4px;
+            padding: 0.25rem 0.6rem;
+            font-weight: 600;
+            &.p-tag-success { background: #000; color: #fff; } /* הוגרל */
+            &.p-tag-warning { background: #eee; color: #000; border: 1px solid #ccc; } /* ממתין */
+        }
+    }
+
+    /* סיכום הכנסות - שחור ויוקרתי */
+    .income-summary {
+        background: #000 !important;
+        color: #fff !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        
+        h3 {
+            color: #fff !important;
+            justify-content: center;
+        }
+
+        .pi-wallet {
+            color: #fff;
+        }
+    }
+
+    /* עיצוב חלון קופץ (Dialog) */
+    ::ng-deep .p-dialog {
+        .p-dialog-header {
+            background: #000;
+            color: #fff;
+            .p-dialog-header-icon { color: #fff; }
+        }
+        .p-datatable-thead > tr > th {
+            background: #eee;
+        }
+    }
+
+    /* מצב טעינה */
+    .loading-shade {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        color: #000;
+
+        ::ng-deep .p-progress-spinner-circle {
+            stroke: #000 !important;
+        }
+    }
+}

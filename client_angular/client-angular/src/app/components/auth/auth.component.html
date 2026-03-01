@@ -1,0 +1,79 @@
+
+<div class="auth-container">
+ <div class="auth-page flex align-items-center justify-content-center min-h-screen">
+    <div class="surface-card p-5 shadow-8 border-round-xl w-full max-w-28rem border-1 border-200">
+      
+      <div class="text-center mb-5">
+        <div class="text-900 text-3xl font-bold mb-2">{{ isLoginMode ? 'WELCOME BACK' : 'CREATE ACCOUNT' }}</div>
+        <span class="text-600 font-medium">{{ isLoginMode ? 'נא להיכנס כדי להמשיך' : 'מלאו את הפרטים כדי להירשם' }}</span>
+      </div>
+
+      <form #authForm="ngForm" (ngSubmit)="onSubmit(authForm)" class="flex flex-column gap-4" novalidate>
+        
+        <div class="flex flex-column gap-2">
+          <label class="text-900 font-semibold">שם משתמש</label>
+          <p-iconField iconPosition="left">
+            <p-inputIcon styleClass="pi pi-user text-900"></p-inputIcon>
+            <input pInputText name="userName" [(ngModel)]="userAuth.userName" 
+                   class="w-full black-input" placeholder="Username" 
+                   required minlength="4" #uName="ngModel" />
+          </p-iconField>
+          <small class="text-red-500" *ngIf="uName.invalid && uName.touched">מינימום 4 תווים</small>
+        </div>
+
+        <ng-container *ngIf="!isLoginMode">
+          <div class="flex gap-3">
+            <div class="flex flex-column gap-2 w-full">
+              <label class="text-900 font-semibold">שם פרטי</label>
+              <input pInputText name="firstName" [(ngModel)]="userAuth.firstName" 
+                     class="w-full black-input" required minlength="2" #fName="ngModel" />
+              <small class="text-red-500" *ngIf="fName.invalid && fName.touched">חובה (מינימום 2 תווים)</small>
+            </div>
+            <div class="flex flex-column gap-2 w-full">
+              <label class="text-900 font-semibold">שם משפחה</label>
+              <input pInputText name="lastName" [(ngModel)]="userAuth.lastName" 
+                     class="w-full black-input" required minlength="2" #lName="ngModel" />
+              <small class="text-red-500" *ngIf="lName.invalid && lName.touched">חובה (מינימום 2 תווים)</small>
+            </div>
+          </div>
+
+          <div class="flex flex-column gap-2">
+            <label class="text-900 font-semibold">אימייל</label>
+            <input pInputText type="email" name="email" [(ngModel)]="userAuth.email" 
+                   class="w-full black-input" placeholder="email@example.com" required email #mail="ngModel" />
+            <small class="text-red-500" *ngIf="mail.invalid && mail.touched">אימייל לא תקין</small>
+          </div>
+          <div class="flex flex-column gap-2" *ngIf="!isLoginMode">
+  <label class="text-900 font-semibold">טלפון</label>
+  <input pInputText name="phone" [(ngModel)]="userAuth.phone" 
+         class="w-full black-input" placeholder="050-0000000" required #phn="ngModel" />
+  <small class="text-red-500" *ngIf="phn.invalid && phn.touched">חובה להזין טלפון</small>
+</div>
+        </ng-container>
+
+        <div class="flex flex-column gap-2">
+          <label class="text-900 font-semibold">סיסמה</label>
+          <p-password name="password" [(ngModel)]="userAuth.password" 
+                      [toggleMask]="true" [feedback]="!isLoginMode"
+                      styleClass="w-full" inputStyleClass="w-full black-input" 
+                      placeholder="Password" required minlength="4" #pass="ngModel">
+          </p-password>
+          <small class="text-red-500" *ngIf="pass.invalid && pass.touched">סיסמה חובה (4+ תווים)</small>
+        </div>
+
+        <button pButton pRipple [label]="isLoading ? 'LOADING...' : (isLoginMode ? 'LOGIN' : 'REGISTER')" 
+                type="submit" 
+                class="w-full py-3 font-bold text-xl black-button border-round-lg mt-2">
+        </button>
+
+      </form>
+
+      <div class="text-center mt-5">
+        <a [routerLink]="isLoginMode ? '/register' : '/login'" class="toggle-mode-link">
+          {{ isLoginMode ? 'אין לך חשבון? הרשם עכשיו' : 'כבר יש לך חשבון? התחבר' }}
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
